@@ -1,93 +1,6 @@
-var VSHADER_SOURCE =
-  'attribute vec4 a_Position;\n' + // 1
-  'attribute float a_TexCoord1;\n' +
-  'attribute vec2 a_TexCoord2d;\n' +
-  
-  'varying float v_TexCoord1;\n' +
-  'varying vec2 v_TexCoord2d;\n' +
-  
-  'uniform mat4 u_ModelMatrix;\n' +
-  'uniform mat4 u_ProjMatrix;\n' +
-  'void main() {\n' +
-  '  gl_Position = u_ProjMatrix* u_ModelMatrix * a_Position;\n' +
-  '  v_TexCoord1 = a_TexCoord1;\n' +
-  '  v_TexCoord2d = a_TexCoord2d;\n' +
-  '}\n';
-
-// Fragment shader program
-var FSHADER_SOURCE =
-  '#ifdef GL_ES\n' + // 1
-  'precision mediump float;\n' +
-  '#endif\n' +
-
-  'uniform int u_EnableTex2D;\n' +  
-  'uniform int u_Stage;\n' +
-  'varying float v_TexCoord1;\n' +
-  'varying vec2 v_TexCoord2d;\n' +
-  'uniform sampler2D u_Sampler2D;\n' +
-  'float rand(float co)\n' +
-  '{\n' +
-  '  return fract(sin(dot(vec2(co, co) ,vec2(12.9898,78.233))) * 43758.5453);\n' +
-  '}\n' +
-  'bool inRangeArcArea(float v)\n' +
-  '{ \n' +
-  '  if (abs(v_TexCoord1-v) < 0.0025) \n' +
-  '    return true;\n' +
-  '  else\n' +
-  '    return false;\n' +
-  '}\n' +
-  'vec4 stage_1()\n' +
-  '{\n' +
-  '  vec4 fc;\n' +
-  '  vec2 uv = v_TexCoord2d;\n' +
-  '  if (u_EnableTex2D == 1)\n' +
-  '    fc = texture2D(u_Sampler2D, uv);\n' +
-  '  else\n' +
-  '    fc = vec4(0.0, 1.0, 0.0, 1.0);\n' +
-  '  if (fc[0] > 0.95)\n' +
-  '    return fc;\n' +
-  '  else' +
-  '    return fc * 0.99;\n' +
-  '}\n' +
-
-  'vec4 stage_2()\n' +
-  '{\n' +
-  '  float c = 0.0;\n' +
-  '  bool a0 = inRangeArcArea(0.25);\n' +
-  '  bool a1 = inRangeArcArea(0.5);\n' +
-  '  bool a2 = inRangeArcArea(0.75);\n' +
-  '  if (a0 || a1 || a2)' +
-  '    return vec4(1, 1, 1, 1.0);\n' +
-  '  else\n' +
-  '    c = rand(v_TexCoord1) * 0.5;\n' +
-  '  return vec4(0, c, 0, 1.0);\n' +
-  '}\n' +
-  'void main() {\n' +
-  '  if (u_Stage == 1)\n' +
-  '    gl_FragColor = stage_1();\n' +
-  '  else if (u_Stage == 2)\n' +
-  '    gl_FragColor = stage_2();\n' +
-  '  else\n' +
-  '    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);\n' +
-  '}\n';
-
-function ESWGL_VBO(gl, vertices) {
-  this.vertexBuffer_ = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer_);
-  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
- 
-  this.onDraw = null;
-  this.draw = function(gl) {
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer_);
-	if (this.onDraw != null) {
-	  this.onDraw(gl);
-	}
-	gl.bindBuffer(gl.ARRAY_BUFFER, null);
-  }
-}
-  
 var o_vertexBufferS1; 
 var o_vertexBufferS2; 
+var o_vertexBufferCursor; 
 var u_ModelMatrix;
 var u_ProjMatrix;
 var modelMatrix;
@@ -95,16 +8,13 @@ var projMatrix;
 var currentAngle;
 var ANGLE_STEP = 45.0;
 var direction = 1.0;
-var u_Stage = 0;
-var u_EnableTex2D;
+var esu_Stage;
+var esu_EnableTex2D;
 var a_Position;
-var a_TexCoord1; // = gl.getAttribLocation(gl.program, 'a_TexCoord1');
+var a_TexCoord1; 
 var a_TexCoord2d;
-var fbo;
-var has_texture_s1 = false;
 var g_texture2D;
 var u_Sampler2D;
-
 
 function main() {
   // Retrieve <canvas> element
@@ -146,17 +56,8 @@ function main() {
   }
   
    
-  u_Stage = gl.getUniformLocation(gl.program, 'u_Stage');
-  if (!u_Stage) { 
-    console.log('Failed to get the storage location of u_Stage');
-    return;
-  }
-
-  u_EnableTex2D = gl.getUniformLocation(gl.program, 'u_EnableTex2D');
-  if (!u_EnableTex2D) { 
-    console.log('Failed to get the storage location of u_EnableTex2D');
-    return;
-  }
+  esu_Stage = new ESWGL_Uniform(gl, 'u_Stage');
+  esu_EnableTex2D = new ESWGL_Uniform(gl, 'u_EnableTex2D', false);
   
   createTexture2D(gl, canvas);
   
@@ -184,6 +85,7 @@ function main() {
 
   initVerticesStage1(gl);
   initVerticesStage2(gl);
+  initCursorVertices(gl);
       
   projMatrix.setOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
 
@@ -197,20 +99,20 @@ function main() {
 }
 
 function drawStage1(gl) {
-  var FSIZE = 4;
-
   gl.bindTexture(gl.TEXTURE_2D, g_texture2D);
-
-  gl.uniform1i(u_Stage, 1);
-  gl.uniform1i(u_EnableTex2D, 1);
+  esu_Stage.setValue(1);
+  esu_EnableTex2D.setValue(1);
   o_vertexBufferS1.draw(gl);  
 }
 
 function drawStage2(gl) {
-  var FSIZE = 4;
-
-  gl.uniform1i(u_Stage, 2);
+  esu_Stage.setValue(2);
   o_vertexBufferS2.draw(gl);  
+}
+
+function drawCursor(gl) {
+  esu_Stage.setValue(3);
+  o_vertexBufferCursor.draw(gl);
 }
 
 function draw(gl) {
@@ -227,6 +129,10 @@ function draw(gl) {
   drawStage2(gl);  
   
   copyTexImage(gl);
+  
+  modelMatrix.setIdentity();
+  gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+  drawCursor(gl);
 }
 
 
@@ -256,16 +162,16 @@ function initVerticesStage1(gl) {
   
   o_vertexBufferS1 = new ESWGL_VBO(gl, vertices);
   o_vertexBufferS1.onDraw = function(gl) {
-    gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, FSIZE*4, 0);
-    gl.enableVertexAttribArray(a_Position);
+  gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, FSIZE*4, 0);
+  gl.enableVertexAttribArray(a_Position);
   
-    gl.vertexAttribPointer(a_TexCoord2d, 2, gl.FLOAT, false, FSIZE*4, FSIZE*2);
-    gl.enableVertexAttribArray(a_TexCoord2d);
-    
-    gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);  	
-    
-    gl.disableVertexAttribArray(a_Position);
-    gl.disableVertexAttribArray(a_TexCoord2d);
+  gl.vertexAttribPointer(a_TexCoord2d, 2, gl.FLOAT, false, FSIZE*4, FSIZE*2);
+  gl.enableVertexAttribArray(a_TexCoord2d);
+  
+  gl.drawArrays(gl.TRIANGLE_FAN, 0, 4);  	
+  
+  gl.disableVertexAttribArray(a_Position);
+  gl.disableVertexAttribArray(a_TexCoord2d);
   }
 }
 
@@ -302,6 +208,31 @@ function initVerticesStage2(gl) {
     gl.disableVertexAttribArray(a_TexCoord1);
   }  
 }
+
+function initCursorVertices(gl) {
+   var vertices = new Float32Array([
+     -0.1, 0.0,
+     0.1, 0.0,
+     0.0, -0.1,
+     0.0, 0.1,
+    ]);
+ 
+  var FSIZE = vertices.BYTES_PER_ELEMENT;
+  console.log('FSIZE = ' + FSIZE);
+  
+  o_vertexBufferCursor = new ESWGL_VBO(gl, vertices);
+  
+  o_vertexBufferCursor.onDraw = function(gl) {
+    gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, FSIZE*2, 0);
+    gl.enableVertexAttribArray(a_Position);
+        
+    gl.drawArrays(gl.LINES, 0, 4);  	
+    
+    gl.disableVertexAttribArray(a_Position);
+  }
+}
+
+
 
 var g_last = Date.now();
 function animate(angle) {

@@ -1,11 +1,7 @@
-App URL:
-http://protected-bayou-4049.herokuapp.com/
-Git URL:
-git@heroku.com:protected-bayou-4049.git 
+git add *
+git commit -m my sur
+git push heroku master
+heroku open
 
 
-Use the following code to set up your app for local development:
-
-#git clone git@heroku.com:protected-bayou-4049.git -o heroku
-
-git clone git@heroku.com:sur-rd.git -o heroku
+# heroku keys:add
