@@ -4,7 +4,6 @@ var o_vertexBufferCursor;
 var o_vertexBufferCircle; 
 var u_ModelMatrix;
 var u_ProjMatrix;
-var u_scanArray;
 var modelMatrix;
 var projMatrix;
 var currentAngle;
@@ -16,7 +15,9 @@ var a_Position;
 var a_TexCoord1; 
 var a_TexCoord2d;
 var g_texture2D;
+var g_texture1D;
 var u_Sampler2D;
+//var u_Sampler1D;
 var g_cursorX=0.0;
 var g_cursorY=0.0;
 
@@ -71,6 +72,7 @@ function main() {
   esu_Stage = new ESWGL_Uniform(gl, 'u_Stage');
   esu_EnableTex2D = new ESWGL_Uniform(gl, 'u_EnableTex2D', false);
   
+  createTexture1D(gl);
   createTexture2D(gl, canvas);
   
   u_Sampler2D = gl.getUniformLocation(gl.program, 'u_Sampler2D');
@@ -79,6 +81,8 @@ function main() {
     return false;
   }
   gl.uniform1i(u_Sampler2D, 0);
+  
+  //u_Sampler1D
   
   // Current rotation angle
   currentAngle = 0.0;
@@ -100,16 +104,18 @@ function main() {
   initCursorVertices(gl);
   initCircleVertices(gl);
    
-    var scanArray = new Float32Array(512);
-	var c = 0.5;
-	for (i = 0; i < 512; ++i) {
-		scanArray[i] = c;
-		//c += 1.0 / 512.0;
-		console.log(c);
-	}
-	u_scanArray = gl.getUniformLocation(gl.program, 'u_scanArray');
-	gl.uniform1fv(u_scanArray, scanArray);
-   
+    //var scanArray = new Float32Array(512);
+	//var c = 0.5;
+	//for (i = 0; i < 512; ++i) {
+	//	scanArray[i] = c;
+	//	//c += 1.0 / 512.0;
+	//	console.log(c);
+	//}
+	//u_scanArray = gl.getUniformLocation(gl.program, 'u_scanArray');
+	//gl.uniform1fv(u_scanArray, scanArray);
+
+	
+	
   projMatrix.setOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
 
    document.onkeydown = function(ev){ 
@@ -134,6 +140,7 @@ function drawStage1(gl) {
 
 function drawStage2(gl) {
   esu_Stage.setValue(2);
+  gl.bindTexture(gl.TEXTURE_2D, g_texture1D);
   o_vertexBufferS2.draw(gl);  
 }
 
@@ -355,7 +362,7 @@ function createTexture2D(gl, canvas) {
 
   //var image = new Image(512, 512);  
   
-  //var imagBuf = new Int8Array(512*512*3);
+  var imagBuf = new Int8Array(512*512*3);
   //var abv = new ArrayBufferView();
   
   
@@ -383,7 +390,61 @@ function createTexture2D(gl, canvas) {
     // Upload the resized canvas image into the texture.
   //    Note: a canvas is used here but can be replaced by an image object. 
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, canvas);
+  
+  //gl.texImage2D(gl.TEXTURE_2D, 0, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, ArrayBufferView? pixels) (
 }
+
+
+function createTexture1D(gl) {
+   g_texture2D = gl.createTexture();   // Create a texture object
+  if (!g_texture1D) {
+    console.log('Failed to create the texture object');
+    return false;
+  }
+
+  //var image = new Image(256);  
+  
+  var imagBuf = new Uint8ClampedArray(256);
+  for (i = 0; i < 256; ++i) {
+	imagBuf[i] = 100;
+  }
+  //var abv = new ArrayBufferView();
+  
+  
+  //var buffer = new ArrayBuffer(12);
+  //var x = new DataView(buffer);
+  //var bff = new ArrayBuffer;
+  //var x = new DataView(bff);
+  
+  //gl.bindTexture(gl.TEXTURE_2D, g_texture2D);
+
+  
+  gl.activeTexture(gl.TEXTURE0);
+// Bind the texture the target (TEXTURE_2D) of the active texture unit.
+  gl.bindTexture(gl.TEXTURE_2D, g_texture1D);
+  
+  // Flip the image's Y axis to match the WebGL texture coordinate space.
+  //gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+      
+  // Set the parameters so we can render any size image.        
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); 
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  
+  
+//	var lcanvas = document.createElement('canvas');
+//	var imageData = lcanvas.getContext('2d').createImageData(512, 1);
+//	imageData.data.set(imagBuf);
+//	
+//    // Upload the resized canvas image into the texture.
+//  //    Note: a canvas is used here but can be replaced by an image object. 
+//  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, gl.LUMINANCE, gl.UNSIGNED_BYTE, lcanvas);
+  
+  
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 32, 32, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, imagBuf);
+}
+
 
 function Faster() {
   if (ANGLE_STEP < 120) {

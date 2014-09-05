@@ -23,22 +23,14 @@ var FSHADER_SOURCE =
 
   'uniform int u_EnableTex2D;\n' +  
   'uniform int u_Stage;\n' +
-  'uniform float u_scanArray[512];\n' +
   'varying float v_TexCoord1;\n' +
   'varying vec2 v_TexCoord2d;\n' +
   'uniform sampler2D u_Sampler2D;\n' +
+//  'uniform sampler1D u_Sampler1D;\n' +
   'float rand(float co)\n' +
   '{\n' +
   '  return fract(sin(dot(vec2(co, co) ,vec2(12.9898,78.233))) * 43758.5453);\n' +
   '}\n' +
-  //'bool inRangeArcArea(float v)\n' +
-  //'{ \n' +
-  //'  return false;' +
-  //'  if (abs(v_TexCoord1-v) < 0.0025) \n' +
-  //'    return true;\n' +
-  //'  else\n' +
-  //'    return false;\n' +
-  //'}\n' +
   'vec4 stage_1()\n' +
   '{\n' +
   '  vec4 fc;\n' +
@@ -52,15 +44,11 @@ var FSHADER_SOURCE =
 
   'vec4 stage_2()\n' +
   '{\n' +
-  // '	int idx = int(v_TexCoord1 * 512.0);\n' +
-  // ' if (idx >= 512)\n' +
-  // '		idx = 511;\n' +
-  // ' if (idx < 0)\n' +
-  // '		idx = 0;\n' +
-  // '	float c = u_scanArray[idx];\n' +
-  // '\n' +
-	//'  float c = 0.0;\n' +
+	'	vec2 uv = vec2(v_TexCoord1, 0);\n' +
+	'	vec4 fc = texture2D(u_Sampler2D, uv);\n' +
 	'  float c = rand(v_TexCoord1) * 0.5;\n' +
+	//'  float c = v_TexCoord1;\n' +
+	//'  return vec4(0, fc[0], 0, 1.0);\n' +
 	'  return vec4(0, c, 0, 1.0);\n' +
   '}\n' +
   'void main() {\n' +
