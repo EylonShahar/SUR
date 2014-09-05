@@ -44,8 +44,8 @@ var FSHADER_SOURCE =
 
   'vec4 stage_2()\n' +
   '{\n' +
-	'	vec2 uv = vec2(v_TexCoord1, 0);\n' +
-	'	vec4 fc = texture2D(u_Sampler2D, uv);\n' +
+	//'	vec2 uv = vec2(v_TexCoord1, 0);\n' +
+	//'	vec4 fc = texture2D(u_Sampler2D, uv);\n' +
 	'  float c = rand(v_TexCoord1) * 0.5;\n' +
 	//'  float c = v_TexCoord1;\n' +
 	//'  return vec4(0, fc[0], 0, 1.0);\n' +

@@ -72,7 +72,7 @@ function main() {
   esu_Stage = new ESWGL_Uniform(gl, 'u_Stage');
   esu_EnableTex2D = new ESWGL_Uniform(gl, 'u_EnableTex2D', false);
   
-  createTexture1D(gl);
+  //createTexture1D(gl);
   createTexture2D(gl, canvas);
   
   u_Sampler2D = gl.getUniformLocation(gl.program, 'u_Sampler2D');
