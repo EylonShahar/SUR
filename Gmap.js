@@ -1,8 +1,10 @@
 var o_vertexBufferS1; 
 var o_vertexBufferS2; 
 var o_vertexBufferCursor; 
+var o_vertexBufferCircle; 
 var u_ModelMatrix;
 var u_ProjMatrix;
+var u_scanArray;
 var modelMatrix;
 var projMatrix;
 var currentAngle;
@@ -15,6 +17,14 @@ var a_TexCoord1;
 var a_TexCoord2d;
 var g_texture2D;
 var u_Sampler2D;
+var g_cursorX=0.0;
+var g_cursorY=0.0;
+
+var NORMAL_MODE = 1;
+var EXPAND_MODE = 2;
+var g_curMode = NORMAL_MODE;
+var g_modelviewStack;
+var g_projectionStack;
 
 function main() {
   // Retrieve <canvas> element
@@ -48,12 +58,14 @@ function main() {
     console.log('Failed to get the storage location of u_ModelMatrix');
     return;
   }
+  g_modelviewStack = new ESWGL_MatrixStack(gl, u_ModelMatrix);
 
   u_ProjMatrix = gl.getUniformLocation(gl.program, 'u_ProjMatrix');
   if (!u_ProjMatrix) { 
     console.log('Failed to get the storage location of u_ProjMatrix');
     return;
   }
+  g_projectionStack = new ESWGL_MatrixStack(gl, u_ProjMatrix);
   
    
   esu_Stage = new ESWGL_Uniform(gl, 'u_Stage');
@@ -86,9 +98,24 @@ function main() {
   initVerticesStage1(gl);
   initVerticesStage2(gl);
   initCursorVertices(gl);
-      
+  initCircleVertices(gl);
+   
+    var scanArray = new Float32Array(512);
+	var c = 0.5;
+	for (i = 0; i < 512; ++i) {
+		scanArray[i] = c;
+		//c += 1.0 / 512.0;
+		console.log(c);
+	}
+	u_scanArray = gl.getUniformLocation(gl.program, 'u_scanArray');
+	gl.uniform1fv(u_scanArray, scanArray);
+   
   projMatrix.setOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
 
+   document.onkeydown = function(ev){ 
+       keydown(ev, gl); 
+	 };
+   
     // Start drawing
    var tick = function() {
      currentAngle = animate(currentAngle);  // Update the rotation angle
@@ -115,6 +142,16 @@ function drawCursor(gl) {
   o_vertexBufferCursor.draw(gl);
 }
 
+function drawCircle(gl, rad) {
+	esu_Stage.setValue(3);
+	g_modelviewStack.push(modelMatrix);
+	modelMatrix.setScale(rad, rad, rad);
+	gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+	o_vertexBufferCircle.draw(gl);
+	
+	modelMatrix = g_modelviewStack.pop();
+}
+
 function draw(gl) {
   gl.clear(gl.COLOR_BUFFER_BIT);
   
@@ -124,15 +161,32 @@ function draw(gl) {
   gl.uniformMatrix4fv(u_ProjMatrix, false, projMatrix.elements);
   drawStage1(gl);
   
+  g_modelviewStack.push(modelMatrix);
   modelMatrix.rotate(currentAngle, 0, 0, 1); // Rotation angle, rotation axis (0, 0, 1)
   gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
-  drawStage2(gl);  
+  drawStage2(gl);
+  modelMatrix = g_modelviewStack.pop();
   
   copyTexImage(gl);
   
-  modelMatrix.setIdentity();
-  gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
-  drawCursor(gl);
+  if (g_curMode == EXPAND_MODE) {
+	g_projectionStack.push(projMatrix);
+	ESWGL_setOrtho(gl, projMatrix, u_ProjMatrix, g_cursorX-0.05, g_cursorX+0.05, g_cursorY-0.05, g_cursorY+0.05, -1, 1);
+	
+	drawStage1(gl);
+	
+	projMatrix = g_projectionStack.pop();
+  }
+  else {
+    modelMatrix.setTranslate(g_cursorX, g_cursorY, 0);
+    gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+    drawCursor(gl);
+	modelMatrix.setIdentity();
+	drawCircle(gl, 0.25);
+	drawCircle(gl, 0.5);
+	drawCircle(gl, 0.75);
+
+  }  
 }
 
 
@@ -211,10 +265,14 @@ function initVerticesStage2(gl) {
 
 function initCursorVertices(gl) {
    var vertices = new Float32Array([
-     -0.1, 0.0,
-     0.1, 0.0,
-     0.0, -0.1,
-     0.0, 0.1,
+     -0.15, 0.0,
+     -0.05, 0.0,
+     0.05, 0.0,
+     0.15, 0.0,
+     0.0, -0.15,
+     0.0, -0.05,
+     0.0, 0.15,
+     0.0, 0.05,
     ]);
  
   var FSIZE = vertices.BYTES_PER_ELEMENT;
@@ -226,12 +284,39 @@ function initCursorVertices(gl) {
     gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, FSIZE*2, 0);
     gl.enableVertexAttribArray(a_Position);
         
-    gl.drawArrays(gl.LINES, 0, 4);  	
+    gl.drawArrays(gl.LINES, 0, 8);  	
     
     gl.disableVertexAttribArray(a_Position);
   }
 }
 
+
+function initCircleVertices(gl) {
+	var CIRCLE_NOF_POINTS = 128;
+  var vertices = new Float32Array(CIRCLE_NOF_POINTS*2);
+   
+  for (i = 0; i < CIRCLE_NOF_POINTS; ++i) {
+    a = i * 2.0 * Math.PI / CIRCLE_NOF_POINTS;
+	//console.log(a);
+	vertices[2*i] = Math.sin(a);
+	vertices[2*i+1] = Math.cos(a);
+	//console.log('= ' + vertices[i] + ', ' + vertices[i+1]);
+  }
+   
+  var FSIZE = vertices.BYTES_PER_ELEMENT;
+  console.log('FSIZE = ' + FSIZE);
+  
+  o_vertexBufferCircle = new ESWGL_VBO(gl, vertices);
+  
+  o_vertexBufferCircle.onDraw = function(gl) {
+    gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, FSIZE*2, 0);
+    gl.enableVertexAttribArray(a_Position);
+        
+    gl.drawArrays(gl.LINE_LOOP, 0, CIRCLE_NOF_POINTS);  	
+    
+    gl.disableVertexAttribArray(a_Position);
+  }
+}
 
 
 var g_last = Date.now();
@@ -313,3 +398,31 @@ function Slower() {
     console.log(ANGLE_STEP);
   }
 }
+
+function Normal() {
+  g_curMode = NORMAL_MODE;
+}
+
+function Expand() {
+  g_curMode = EXPAND_MODE;
+}
+
+function keydown(ev, gl) {
+  step = 4.0 / 512.0;
+  //console.log(ev.keyCode);
+  //alert('x = ' + ev.keyCode);
+  if(ev.keyCode == 39) { // The right arrow key was pressed
+    g_cursorX += step;
+  } 
+  else if (ev.keyCode == 37) { // The left arrow key was pressed
+    g_cursorX -= step;
+  } 
+  else if (ev.keyCode == 38) { // The left arrow key was pressed
+    g_cursorY += step;
+  } 
+  else if (ev.keyCode == 40) { // The left arrow key was pressed
+    g_cursorY -= step;
+  } 
+
+}
+

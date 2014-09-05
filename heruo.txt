@@ -1,5 +1,5 @@
 git add *
-git commit -m my sur
+git commit -m surv3
 git push heroku master
 heroku open
 

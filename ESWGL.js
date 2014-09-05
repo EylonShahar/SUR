@@ -34,3 +34,25 @@ function ESWGL_Uniform(gl, name, enabled) {
   }
 }
 
+function ESWGL_MatrixStack(gl, loc) {
+  this.matrixArray = [];
+  this.gl = gl;
+  this.loc = loc;
+  
+  this.push = function(mat) {
+	newMath = new Matrix4(mat);
+    this.matrixArray.push(newMath);
+  }
+  
+  this.pop = function() {
+    mat = this.matrixArray.pop();
+	this.gl.uniformMatrix4fv(loc, false, mat.elements);
+	return mat;
+  }
+}
+
+function ESWGL_setOrtho(gl, projMatrix, u_ProjMatrix, x0, x1, y0, y1, z0, z1) {
+  projMatrix.setOrtho(x0, x1, y0, y1, z0, z1);
+  gl.uniformMatrix4fv(u_ProjMatrix, false, projMatrix.elements);
+}
+
