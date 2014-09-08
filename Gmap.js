@@ -113,19 +113,7 @@ function main() {
   initVerticesStage2(gl);
   initCursorVertices(gl);
   initCircleVertices(gl);
-   
-    //var scanArray = new Float32Array(512);
-	//var c = 0.5;
-	//for (i = 0; i < 512; ++i) {
-	//	scanArray[i] = c;
-	//	//c += 1.0 / 512.0;
-	//	console.log(c);
-	//}
-	//u_scanArray = gl.getUniformLocation(gl.program, 'u_scanArray');
-	//gl.uniform1fv(u_scanArray, scanArray);
-
-	
-	
+   	
   projMatrix.setOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
 
    document.onkeydown = function(ev){ 
@@ -203,9 +191,7 @@ function draw(gl) {
   modelMatrix = g_modelviewStack.pop();
   
   copyTexImage(gl);
-  
-  //drawStage3(gl);
-  
+    
   if (g_curMode == EXPAND_MODE) {
 	g_projectionStack.push(projMatrix);
 	ESWGL_setOrtho(gl, projMatrix, u_ProjMatrix, g_cursorX-0.15, g_cursorX+0.15, g_cursorY-0.15, g_cursorY+0.15, -1, 1);
@@ -231,12 +217,6 @@ function draw(gl) {
 
 function copyTexImage(gl) {
 	viewport = gl.getParameter(gl.VIEWPORT);
-	//console.log(viewp[0]);
-	//console.log(viewp[1]);
-	//console.log(viewp[2]);
-	//console.log(viewp[3]);
-	// gl.bind(...);
-	//gl.activeTexture(gl.TEXTURE0);
 	// Bind the texture object to the target
 	gl.activeTexture(gl.TEXTURE0);
 	gl.bindTexture(gl.TEXTURE_2D, g_texture2D);
@@ -461,28 +441,10 @@ function createTexture2D(gl, canvas) {
 		return false;
 	}
 
-  //var image = new Image(512, 512);  
-  
-  //var imagBuf = new Int8Array(512*512*3);
-  //var abv = new ArrayBufferView();
-  
-  
-  //var buffer = new ArrayBuffer(12);
-  //var x = new DataView(buffer);
-  //var bff = new ArrayBuffer;
-  //var x = new DataView(bff);
-  
-  //gl.bindTexture(gl.TEXTURE_2D, g_texture2D);
-
-  
-  //gl.activeTexture(gl.TEXTURE0);
   gl.activeTexture(gl.TEXTURE0);
-// Bind the texture the target (TEXTURE_2D) of the active texture unit.
+	// Bind the texture the target (TEXTURE_2D) of the active texture unit.
   gl.bindTexture(gl.TEXTURE_2D, g_texture2D);
-  
-  // Flip the image's Y axis to match the WebGL texture coordinate space.
-  //gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-      
+        
   // Set the parameters so we can render any size image.        
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); 
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -492,8 +454,6 @@ function createTexture2D(gl, canvas) {
     // Upload the resized canvas image into the texture.
   //    Note: a canvas is used here but can be replaced by an image object. 
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, canvas);
-  
-  //gl.texImage2D(gl.TEXTURE_2D, 0, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, ArrayBufferView? pixels) (
 }
 
 
@@ -504,23 +464,13 @@ function createTexture1D(gl) {
     return false;
   }
 
-  //var image = new Image(256);  
-  
+ 
   var imagBuf = new Uint8ClampedArray(256 * 3);
   for (i = 0; i < 256; ++i) {
 	imagBuf[3*i] = 100;
 	imagBuf[3*i + 1] = 100;
 	imagBuf[3*i + 2] = 100;
   }
-  //var abv = new ArrayBufferView();
-  
-  
-  //var buffer = new ArrayBuffer(12);
-  //var x = new DataView(buffer);
-  //var bff = new ArrayBuffer;
-  //var x = new DataView(bff);
-  
-  //gl.bindTexture(gl.TEXTURE_2D, g_texture2D);
 
   
   gl.activeTexture(gl.TEXTURE0);
@@ -545,8 +495,6 @@ function createTexture1D(gl) {
   //    Note: a canvas is used here but can be replaced by an image object. 
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, lcanvas);
   
-  
-  //gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 16, 16, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, imagBuf);
 }
 
 
