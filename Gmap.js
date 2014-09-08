@@ -15,8 +15,10 @@ var a_Position;
 var a_TexCoord1; 
 var a_TexCoord2d;
 var g_texture2D;
+var g_textureTerrain;
 var g_texture1D;
 var u_Sampler2D;
+var u_SamplerTerrain;
 //var u_Sampler1D;
 var g_cursorX=0.0;
 var g_cursorY=0.0;
@@ -81,6 +83,14 @@ function main() {
     return false;
   }
   gl.uniform1i(u_Sampler2D, 0);
+
+  u_SamplerTerrain = gl.getUniformLocation(gl.program, 'u_SamplerTerrain');
+  if (!u_SamplerTerrain) {
+    console.log('Failed to get the storage location of u_SamplerTerrain');
+    return false;
+  }
+  gl.uniform1i(u_SamplerTerrain, 1);
+
   
   //u_Sampler1D
   
@@ -132,25 +142,43 @@ function main() {
 }
 
 function drawStage1(gl) {
-  gl.bindTexture(gl.TEXTURE_2D, g_texture2D);
-  esu_Stage.setValue(1);
-  esu_EnableTex2D.setValue(1);
-  o_vertexBufferS1.draw(gl);  
+	gl.activeTexture(gl.TEXTURE0);
+	gl.bindTexture(gl.TEXTURE_2D, g_texture2D);
+	
+	gl.activeTexture(gl.TEXTURE1);
+	gl.bindTexture(gl.TEXTURE_2D, g_textureTerrain);
+	
+	esu_Stage.setValue(1);
+	//esu_EnableTex2D.setValue(1);
+	o_vertexBufferS1.draw(gl);  
+}
+
+function drawStage3(gl) {
+	gl.activeTexture(gl.TEXTURE0);
+	gl.bindTexture(gl.TEXTURE_2D, g_texture2D);
+	
+	gl.activeTexture(gl.TEXTURE1);
+	gl.bindTexture(gl.TEXTURE_2D, g_textureTerrain);
+	
+	esu_Stage.setValue(3);
+	//esu_EnableTex2D.setValue(1);
+	o_vertexBufferS1.draw(gl);  
 }
 
 function drawStage2(gl) {
   esu_Stage.setValue(2);
-  gl.bindTexture(gl.TEXTURE_2D, g_texture1D);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, g_textureTerrain);
   o_vertexBufferS2.draw(gl);  
 }
 
 function drawCursor(gl) {
-  esu_Stage.setValue(3);
+  esu_Stage.setValue(4);
   o_vertexBufferCursor.draw(gl);
 }
 
 function drawCircle(gl, rad) {
-	esu_Stage.setValue(3);
+	esu_Stage.setValue(4);
 	g_modelviewStack.push(modelMatrix);
 	modelMatrix.setScale(rad, rad, rad);
 	gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
@@ -176,15 +204,18 @@ function draw(gl) {
   
   copyTexImage(gl);
   
+  //drawStage3(gl);
+  
   if (g_curMode == EXPAND_MODE) {
 	g_projectionStack.push(projMatrix);
-	ESWGL_setOrtho(gl, projMatrix, u_ProjMatrix, g_cursorX-0.05, g_cursorX+0.05, g_cursorY-0.05, g_cursorY+0.05, -1, 1);
+	ESWGL_setOrtho(gl, projMatrix, u_ProjMatrix, g_cursorX-0.15, g_cursorX+0.15, g_cursorY-0.15, g_cursorY+0.15, -1, 1);
 	
-	drawStage1(gl);
+	drawStage3(gl);
 	
 	projMatrix = g_projectionStack.pop();
   }
   else {
+	drawStage3(gl);
     modelMatrix.setTranslate(g_cursorX, g_cursorY, 0);
     gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
     drawCursor(gl);
@@ -192,22 +223,24 @@ function draw(gl) {
 	drawCircle(gl, 0.25);
 	drawCircle(gl, 0.5);
 	drawCircle(gl, 0.75);
+	drawCircle(gl, 1.0);
 
   }  
 }
 
 
 function copyTexImage(gl) {
-  viewport = gl.getParameter(gl.VIEWPORT);
-  //console.log(viewp[0]);
-  //console.log(viewp[1]);
-  //console.log(viewp[2]);
-  //console.log(viewp[3]);
-  // gl.bind(...);
-  gl.activeTexture(gl.TEXTURE0);
-  // Bind the texture object to the target
-  gl.bindTexture(gl.TEXTURE_2D, g_texture2D);
-  gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGB, viewport[0], viewport[1], viewport[2], viewport[3], 0);
+	viewport = gl.getParameter(gl.VIEWPORT);
+	//console.log(viewp[0]);
+	//console.log(viewp[1]);
+	//console.log(viewp[2]);
+	//console.log(viewp[3]);
+	// gl.bind(...);
+	//gl.activeTexture(gl.TEXTURE0);
+	// Bind the texture object to the target
+	gl.activeTexture(gl.TEXTURE0);
+	gl.bindTexture(gl.TEXTURE_2D, g_texture2D);
+	gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGB, viewport[0], viewport[1], viewport[2], viewport[3], 0);
 }
 
 function initVerticesStage1(gl) {
@@ -353,16 +386,84 @@ function click(ev) {
 	return newAngle;
 }
 
+
+function loadTerrainTexture(gl, texture, image) {
+	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1); // Flip the image's y axis
+	// Enable texture unit0
+	gl.activeTexture(gl.TEXTURE1);
+	// Bind the texture object to the target
+	gl.bindTexture(gl.TEXTURE_2D, texture);
+	
+	// Set the texture parameters
+	//gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+	
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); 
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+	
+	// Set the texture image
+	console.log("150")
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+	console.log("160")
+	
+	// Set the texture unit 0 to the sampler
+	//gl.uniform1i(u_Sampler, 0);
+	
+	//gl.clear(gl.COLOR_BUFFER_BIT);   // Clear <canvas>
+	
+	//gl.drawArrays(gl.TRIANGLE_STRIP, 0, n); // Draw the rectangle
+}
+
+function initTerrainTexture(gl) {
+	var texture = gl.createTexture();   // Create a texture object
+	if (!texture) {
+		console.log('Failed to create the texture object');
+		return false;
+	}
+	
+	// Get the storage location of u_Sampler
+	//var u_Sampler = gl.getUniformLocation(gl.program, 'u_Sampler');
+	//if (!u_Sampler) {
+	//	console.log('Failed to get the storage location of u_Sampler');
+	//	return false;
+	//}
+	
+	var image = new Image();  // Create the image object
+	if (!image) {
+		console.log('Failed to create the image object');
+		return false;
+	}
+	
+	console.log("100")
+	// Register the event handler to be called on loading an image
+	image.onload = function() { 
+		loadTerrainTexture(gl, texture, image); 
+	};
+	
+	// Tell the browser to load an image
+	image.src =  'sur.jpg';// 'sky.jpg';
+	//image.src =  'sky.jpg';
+	
+	return texture;
+	
+}
+
 function createTexture2D(gl, canvas) {
-   g_texture2D = gl.createTexture();   // Create a texture object
-  if (!g_texture2D) {
-    console.log('Failed to create the texture object');
-    return false;
-  }
+	g_textureTerrain = initTerrainTexture(gl);
+	//gl.bindTexture(gl.TEXTURE_2D, g_texture2D);
+	//return true;
+
+
+	g_texture2D = gl.createTexture();   // Create a texture object
+	if (!g_texture2D) {
+		console.log('Failed to create the texture object');
+		return false;
+	}
 
   //var image = new Image(512, 512);  
   
-  var imagBuf = new Int8Array(512*512*3);
+  //var imagBuf = new Int8Array(512*512*3);
   //var abv = new ArrayBufferView();
   
   
@@ -374,6 +475,7 @@ function createTexture2D(gl, canvas) {
   //gl.bindTexture(gl.TEXTURE_2D, g_texture2D);
 
   
+  //gl.activeTexture(gl.TEXTURE0);
   gl.activeTexture(gl.TEXTURE0);
 // Bind the texture the target (TEXTURE_2D) of the active texture unit.
   gl.bindTexture(gl.TEXTURE_2D, g_texture2D);
@@ -396,7 +498,7 @@ function createTexture2D(gl, canvas) {
 
 
 function createTexture1D(gl) {
-   g_texture2D = gl.createTexture();   // Create a texture object
+   g_texture1D = gl.createTexture();   // Create a texture object
   if (!g_texture1D) {
     console.log('Failed to create the texture object');
     return false;
@@ -404,9 +506,11 @@ function createTexture1D(gl) {
 
   //var image = new Image(256);  
   
-  var imagBuf = new Uint8ClampedArray(256);
+  var imagBuf = new Uint8ClampedArray(256 * 3);
   for (i = 0; i < 256; ++i) {
-	imagBuf[i] = 100;
+	imagBuf[3*i] = 100;
+	imagBuf[3*i + 1] = 100;
+	imagBuf[3*i + 2] = 100;
   }
   //var abv = new ArrayBufferView();
   
@@ -433,21 +537,21 @@ function createTexture1D(gl) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   
   
-//	var lcanvas = document.createElement('canvas');
-//	var imageData = lcanvas.getContext('2d').createImageData(512, 1);
-//	imageData.data.set(imagBuf);
-//	
-//    // Upload the resized canvas image into the texture.
-//  //    Note: a canvas is used here but can be replaced by an image object. 
-//  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, gl.LUMINANCE, gl.UNSIGNED_BYTE, lcanvas);
+	var lcanvas = document.createElement('canvas');
+	var imageData = lcanvas.getContext('2d').createImageData(16, 16);
+	imageData.data.set(imagBuf);
+	
+    // Upload the resized canvas image into the texture.
+  //    Note: a canvas is used here but can be replaced by an image object. 
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, lcanvas);
   
   
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 32, 32, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, imagBuf);
+  //gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 16, 16, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, imagBuf);
 }
 
 
 function Faster() {
-  if (ANGLE_STEP < 120) {
+  if (ANGLE_STEP < 100) {
     ANGLE_STEP += 10; 
     console.log(ANGLE_STEP);
   }
